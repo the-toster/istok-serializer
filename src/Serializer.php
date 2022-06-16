@@ -9,7 +9,19 @@ final class Serializer
 {
     public function toArray(object $obj): array
     {
-        return [];
+        $reflection = new \ReflectionClass($obj);
+        $properties = $reflection->getProperties();
+        $r = [];
+        foreach ($properties as $property) {
+            $type = $property->getType();
+            if(!$type || $type->isBuiltin()) {
+                $r[$property->getName()] = $property->getValue($obj);
+            } else {
+                $r[$property->getName()] = $this->toArray($property->getValue($obj));
+            }
+        }
+
+        return $r;
     }
 
     /**
@@ -19,6 +31,16 @@ final class Serializer
      */
     public function fromArray(array $serialized, string $className): object
     {
+        $reflection = new \ReflectionClass($className);
+        $instance = $reflection->newInstanceWithoutConstructor();
+        foreach ($serialized as $k => $v) {
+            if(!$reflection->hasProperty($k)) {
+                continue;
+            }
 
+            $property = $reflection->getProperty($k);
+            $property->setValue($instance, $v);
+        }
+        return $instance;
     }
 }
